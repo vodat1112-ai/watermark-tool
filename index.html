@@ -92,16 +92,42 @@
   .row2{display:flex; gap:10px;}
   .row2 > div{flex:1;}
   .file-drop{
-    border:1.5px dashed var(--panel-border);
-    border-radius:10px;
-    padding:16px;
+    border:2px dashed var(--accent);
+    border-radius:12px;
+    padding:20px 16px;
     text-align:center;
     font-size:13px;
     color:var(--muted);
     cursor:pointer;
-    transition:border-color .15s;
+    transition:border-color .15s, background .15s;
+    background:rgba(90,176,255,0.08);
   }
-  .file-drop:hover{border-color:var(--accent);}
+  .file-drop:hover{border-color:#8cc8ff; background:rgba(90,176,255,0.14);}
+  .file-drop-hint{
+    font-size:14px;
+    font-weight:600;
+    color:var(--text);
+    margin-bottom:14px;
+  }
+  .file-btn-row{
+    display:flex;
+    gap:10px;
+    width:100%;
+  }
+  .file-btn{
+    flex:1;
+    padding:13px 8px;
+    border-radius:9px;
+    border:1px solid var(--accent);
+    background:rgba(90,176,255,0.12);
+    color:var(--text);
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    transition:background .15s;
+  }
+  .file-btn:hover{background:rgba(90,176,255,0.25);}
+  .file-btn:active{background:rgba(90,176,255,0.35);}
   button{
     width:100%;
     margin-top:18px;
@@ -174,8 +200,15 @@
     <p class="sub">Điền thông tin, xem trước trực tiếp, rồi tải ảnh xuống.</p>
 
     <label>Ảnh gốc</label>
-    <div class="file-drop" id="dropZone">Chọn hoặc kéo thả ảnh vào đây</div>
-    <input type="file" id="fileInput" accept="image/*" style="display:none">
+    <div class="file-drop" id="dropZone">
+      <div class="file-drop-hint">📁 Chọn hoặc kéo thả ảnh vào đây</div>
+      <div class="file-btn-row">
+        <button type="button" id="cameraBtn" class="file-btn">📷 Chụp ảnh</button>
+        <button type="button" id="galleryBtn" class="file-btn">🖼️ Chọn từ máy</button>
+      </div>
+    </div>
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none">
+    <input type="file" id="galleryInput" accept="image/*" style="display:none">
 
     <label>Nội dung watermark (mỗi dòng 1 ý)</label>
     <textarea id="watermarkText" rows="6" placeholder="Mỗi dòng sẽ thành 1 dòng chữ trên ảnh">18 Jun 2026 at 01:51:00
@@ -208,7 +241,10 @@ CTO0589-11</textarea>
 </div>
 
 <script>
-const fileInput = document.getElementById('fileInput');
+const cameraInput = document.getElementById('cameraInput');
+const galleryInput = document.getElementById('galleryInput');
+const cameraBtn = document.getElementById('cameraBtn');
+const galleryBtn = document.getElementById('galleryBtn');
 const dropZone = document.getElementById('dropZone');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -230,7 +266,8 @@ const lineSpacingVal = document.getElementById('lineSpacingVal');
 lineSpacing.addEventListener('input', () => { lineSpacingVal.textContent = lineSpacing.value; render(); });
 lineSpacingVal.textContent = lineSpacing.value;
 
-dropZone.addEventListener('click', () => fileInput.click());
+cameraBtn.addEventListener('click', e => { e.stopPropagation(); cameraInput.click(); });
+galleryBtn.addEventListener('click', e => { e.stopPropagation(); galleryInput.click(); });
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--accent)'; });
 dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = ''; });
 dropZone.addEventListener('drop', e => {
@@ -238,7 +275,10 @@ dropZone.addEventListener('drop', e => {
   dropZone.style.borderColor = '';
   if (e.dataTransfer.files[0]) loadImage(e.dataTransfer.files[0]);
 });
-fileInput.addEventListener('change', e => {
+cameraInput.addEventListener('change', e => {
+  if (e.target.files[0]) loadImage(e.target.files[0]);
+});
+galleryInput.addEventListener('change', e => {
   if (e.target.files[0]) loadImage(e.target.files[0]);
 });
 
@@ -262,7 +302,8 @@ function loadImage(file){
 
 resetBtn.addEventListener('click', () => {
   img = null;
-  fileInput.value = '';
+  cameraInput.value = '';
+  galleryInput.value = '';
   canvas.style.display = 'none';
   placeholder.style.display = 'block';
   downloadBtn.disabled = true;
