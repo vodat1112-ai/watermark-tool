@@ -175,7 +175,7 @@
 
     <label>Ảnh gốc</label>
     <div class="file-drop" id="dropZone">Chọn hoặc kéo thả ảnh vào đây</div>
-    <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none">
+    <input type="file" id="fileInput" accept="image/*" style="display:none">
 
     <label>Nội dung watermark (mỗi dòng 1 ý)</label>
     <textarea id="watermarkText" rows="6" placeholder="Mỗi dòng sẽ thành 1 dòng chữ trên ảnh">18 Jun 2026 at 01:51:00
@@ -306,7 +306,7 @@ function render(){
   const marginRight = fontSize * 0.45;
   const marginTop = fontSize * 0.75;
 
-  ctx.font = `500 ${fontSize}px "Helvetica Neue", Arial, sans-serif`;
+  ctx.font = `400 ${fontSize}px "Helvetica Neue", Arial, sans-serif`;
   ctx.textAlign = 'right';
   ctx.textBaseline = 'top';
   ctx.lineJoin = 'round';
@@ -315,16 +315,11 @@ function render(){
     const x = canvas.width - marginRight;
     const y = marginTop + i * lineHeight;
 
-    // very thin dark outline, just enough for legibility, not a bold look
-    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-    ctx.lineWidth = fontSize * 0.025;
-    ctx.strokeText(line, x, y);
-
-    // soft, slightly larger drop shadow instead of outline to carry contrast
-    ctx.shadowColor = 'rgba(0,0,0,0.6)';
-    ctx.shadowBlur = fontSize * 0.12;
+    // soft drop shadow only, carries contrast without thickening the strokes
+    ctx.shadowColor = 'rgba(0,0,0,0.55)';
+    ctx.shadowBlur = fontSize * 0.1;
     ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = fontSize * 0.03;
+    ctx.shadowOffsetY = fontSize * 0.025;
 
     ctx.fillStyle = '#ffffff';
     ctx.fillText(line, x, y);
