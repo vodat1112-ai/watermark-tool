@@ -92,42 +92,16 @@
   .row2{display:flex; gap:10px;}
   .row2 > div{flex:1;}
   .file-drop{
-    border:2px dashed var(--accent);
-    border-radius:12px;
-    padding:20px 16px;
+    border:1.5px dashed var(--panel-border);
+    border-radius:10px;
+    padding:16px;
     text-align:center;
     font-size:13px;
     color:var(--muted);
     cursor:pointer;
-    transition:border-color .15s, background .15s;
-    background:rgba(90,176,255,0.08);
+    transition:border-color .15s;
   }
-  .file-drop:hover{border-color:#8cc8ff; background:rgba(90,176,255,0.14);}
-  .file-drop-hint{
-    font-size:14px;
-    font-weight:600;
-    color:var(--text);
-    margin-bottom:14px;
-  }
-  .file-btn-row{
-    display:flex;
-    gap:10px;
-    width:100%;
-  }
-  .file-btn{
-    flex:1;
-    padding:13px 8px;
-    border-radius:9px;
-    border:1px solid var(--accent);
-    background:rgba(90,176,255,0.12);
-    color:var(--text);
-    font-size:13px;
-    font-weight:600;
-    cursor:pointer;
-    transition:background .15s;
-  }
-  .file-btn:hover{background:rgba(90,176,255,0.25);}
-  .file-btn:active{background:rgba(90,176,255,0.35);}
+  .file-drop:hover{border-color:var(--accent);}
   button{
     width:100%;
     margin-top:18px;
@@ -200,15 +174,8 @@
     <p class="sub">Điền thông tin, xem trước trực tiếp, rồi tải ảnh xuống.</p>
 
     <label>Ảnh gốc</label>
-    <div class="file-drop" id="dropZone">
-      <div class="file-drop-hint">📁 Chọn hoặc kéo thả ảnh vào đây</div>
-      <div class="file-btn-row">
-        <button type="button" id="cameraBtn" class="file-btn">📷 Chụp ảnh</button>
-        <button type="button" id="galleryBtn" class="file-btn">🖼️ Chọn từ máy</button>
-      </div>
-    </div>
-    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none">
-    <input type="file" id="galleryInput" accept="image/*" style="display:none">
+    <div class="file-drop" id="dropZone">Chọn hoặc kéo thả ảnh vào đây</div>
+    <input type="file" id="fileInput" accept="image/*" style="display:none">
 
     <label>Nội dung watermark (mỗi dòng 1 ý)</label>
     <textarea id="watermarkText" rows="6" placeholder="Mỗi dòng sẽ thành 1 dòng chữ trên ảnh">18 Jun 2026 at 01:51:00
@@ -229,6 +196,18 @@ CTO0589-11</textarea>
       <span id="lineSpacingVal"></span>
     </div>
 
+    <label>Vị trí ngang (từ mép phải)</label>
+    <div class="slider-row">
+      <input type="range" id="marginLeft" min="0" max="0.5" step="0.01" value="0">
+      <span id="marginLeftVal"></span>
+    </div>
+
+    <label>Vị trí dọc (từ mép trên)</label>
+    <div class="slider-row">
+      <input type="range" id="marginTop" min="0" max="0.9" step="0.01" value="0">
+      <span id="marginTopVal"></span>
+    </div>
+
     <button id="downloadBtn" disabled>Tải ảnh xuống</button>
     <button class="secondary" id="resetBtn">Xoá ảnh</button>
   </div>
@@ -241,10 +220,7 @@ CTO0589-11</textarea>
 </div>
 
 <script>
-const cameraInput = document.getElementById('cameraInput');
-const galleryInput = document.getElementById('galleryInput');
-const cameraBtn = document.getElementById('cameraBtn');
-const galleryBtn = document.getElementById('galleryBtn');
+const fileInput = document.getElementById('fileInput');
 const dropZone = document.getElementById('dropZone');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -266,8 +242,17 @@ const lineSpacingVal = document.getElementById('lineSpacingVal');
 lineSpacing.addEventListener('input', () => { lineSpacingVal.textContent = lineSpacing.value; render(); });
 lineSpacingVal.textContent = lineSpacing.value;
 
-cameraBtn.addEventListener('click', e => { e.stopPropagation(); cameraInput.click(); });
-galleryBtn.addEventListener('click', e => { e.stopPropagation(); galleryInput.click(); });
+const marginLeftSlider = document.getElementById('marginLeft');
+const marginLeftVal = document.getElementById('marginLeftVal');
+marginLeftSlider.addEventListener('input', () => { marginLeftVal.textContent = Math.round(parseFloat(marginLeftSlider.value)*100)+'%'; render(); });
+marginLeftVal.textContent = Math.round(parseFloat(marginLeftSlider.value)*100)+'%';
+
+const marginTopSlider = document.getElementById('marginTop');
+const marginTopVal = document.getElementById('marginTopVal');
+marginTopSlider.addEventListener('input', () => { marginTopVal.textContent = Math.round(parseFloat(marginTopSlider.value)*100)+'%'; render(); });
+marginTopVal.textContent = Math.round(parseFloat(marginTopSlider.value)*100)+'%';
+
+dropZone.addEventListener('click', () => fileInput.click());
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--accent)'; });
 dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = ''; });
 dropZone.addEventListener('drop', e => {
@@ -275,10 +260,7 @@ dropZone.addEventListener('drop', e => {
   dropZone.style.borderColor = '';
   if (e.dataTransfer.files[0]) loadImage(e.dataTransfer.files[0]);
 });
-cameraInput.addEventListener('change', e => {
-  if (e.target.files[0]) loadImage(e.target.files[0]);
-});
-galleryInput.addEventListener('change', e => {
+fileInput.addEventListener('change', e => {
   if (e.target.files[0]) loadImage(e.target.files[0]);
 });
 
@@ -302,8 +284,7 @@ function loadImage(file){
 
 resetBtn.addEventListener('click', () => {
   img = null;
-  cameraInput.value = '';
-  galleryInput.value = '';
+  fileInput.value = '';
   canvas.style.display = 'none';
   placeholder.style.display = 'block';
   downloadBtn.disabled = true;
@@ -344,8 +325,12 @@ function render(){
 
   const fontSize = canvas.width * parseFloat(fontScale.value);
   const lineHeight = fontSize * parseFloat(lineSpacing.value);
-  const marginRight = fontSize * 0.45;
-  const marginTop = fontSize * 0.75;
+
+  const mrRatio = parseFloat(marginLeftSlider.value);
+  const mtRatio = parseFloat(marginTopSlider.value);
+
+  const marginX = canvas.width * (1 - mrRatio) - fontSize * 0.45;
+  const marginTop = canvas.height * mtRatio + fontSize * 0.75;
 
   ctx.font = `400 ${fontSize}px "Helvetica Neue", Arial, sans-serif`;
   ctx.textAlign = 'right';
@@ -353,7 +338,7 @@ function render(){
   ctx.lineJoin = 'round';
 
   lines.forEach((line, i) => {
-    const x = canvas.width - marginRight;
+    const x = marginX;
     const y = marginTop + i * lineHeight;
 
     // soft drop shadow only, carries contrast without thickening the strokes
