@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="Watermark">
 <meta name="theme-color" content="#15171c">
 <title>Tool chèn watermark ảnh</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
   :root{
     --bg:#15171c;
@@ -143,6 +144,69 @@
   .slider-row input[type=range]{flex:1;}
   .slider-row span{font-size:12px; color:var(--muted); width:40px; text-align:right;}
 
+  .tabs{
+    display:flex;
+    gap:6px;
+    margin-top:18px;
+    background:var(--input-bg);
+    border:1px solid var(--panel-border);
+    border-radius:10px;
+    padding:4px;
+  }
+  .tab-btn{
+    flex:1;
+    margin:0;
+    padding:8px 6px;
+    font-size:12.5px;
+    font-weight:600;
+    border:none;
+    border-radius:7px;
+    background:transparent;
+    color:var(--muted);
+    cursor:pointer;
+  }
+  .tab-btn.active{
+    background:var(--accent);
+    color:#08131f;
+  }
+  .tab-panel{margin-top:4px;}
+  .hint{
+    font-size:12px;
+    color:var(--muted);
+    margin:14px 0 0;
+    line-height:1.5;
+  }
+  #leafletMap{
+    height:220px;
+    width:100%;
+    border-radius:10px;
+    margin-top:10px;
+    border:1px solid var(--panel-border);
+    background:#0d0f13;
+  }
+  .leaflet-pane, .leaflet-control{font-family:inherit;}
+  .row2.align{align-items:flex-end;}
+  button.inline{
+    width:auto;
+    margin-top:0;
+    padding:9px 14px;
+    white-space:nowrap;
+  }
+  button.locate{
+    background:transparent;
+    border:1px solid var(--panel-border);
+    color:var(--accent);
+    margin-top:8px;
+  }
+  #geoStatus{
+    font-size:12px;
+    color:var(--muted);
+    margin-top:8px;
+    min-height:14px;
+  }
+  #geoStatus.error{color:#ff8b8b;}
+  #geoStatus.ok{color:#7fd99b;}
+
   @media (max-width: 640px){
     .wrap{
       padding:14px;
@@ -163,6 +227,8 @@
     h1{font-size:18px;}
     button{padding:13px; font-size:15px;}
     textarea, input[type=text], input[type=number]{font-size:16px;} /* tránh iOS tự zoom khi focus */
+    #leafletMap{height:200px;}
+    .tab-btn{font-size:12px; padding:9px 4px;}
   }
 </style>
 </head>
@@ -177,12 +243,40 @@
     <div class="file-drop" id="dropZone">Chọn hoặc kéo thả ảnh vào đây</div>
     <input type="file" id="fileInput" accept="image/*" style="display:none">
 
+    <div class="tabs">
+      <button class="tab-btn active" id="tabBtnManual" type="button">① Nhập tay</button>
+      <button class="tab-btn" id="tabBtnMap" type="button">② Từ toạ độ + bản đồ</button>
+    </div>
+
+    <div class="tab-panel" id="tabPanelMap" style="display:none">
+      <label>Toạ độ (lat, lng)</label>
+      <div class="row2 align">
+        <div>
+          <input type="text" id="coordInput" placeholder="10.863279, 105.7618719">
+        </div>
+        <button class="secondary inline" id="coordSearchBtn" type="button">Tìm</button>
+      </div>
+
+      <div id="leafletMap"></div>
+      <button class="locate" id="useMyLocationBtn" type="button">📍 Dùng vị trí hiện tại của tôi</button>
+
+      <label>Ngày giờ</label>
+      <input type="datetime-local" id="dtPicker" step="1">
+
+      <label>Ghi chú thêm (mã máy, ghi chú... không bắt buộc)</label>
+      <input type="text" id="extraNote" placeholder="CTO0589-11">
+
+      <button id="applyMapBtn" type="button">Lấy địa chỉ & điền vào ảnh</button>
+      <div id="geoStatus"></div>
+    </div>
+
     <label>Nội dung watermark (mỗi dòng 1 ý)</label>
     <textarea id="watermarkText" rows="6" placeholder="Mỗi dòng sẽ thành 1 dòng chữ trên ảnh">18 Jun 2026 at 01:51:00
 +10.019165,+105.630380
 Thành Phố Cần Thơ
 X. Phong Điền
 CTO0589-11</textarea>
+    <p class="hint" id="manualHint">Có thể sửa trực tiếp nội dung ở trên — mỗi dòng sẽ thành 1 dòng chữ trên ảnh.</p>
 
     <label>Cỡ chữ</label>
     <div class="slider-row">
@@ -196,18 +290,6 @@ CTO0589-11</textarea>
       <span id="lineSpacingVal"></span>
     </div>
 
-    <label>Vị trí ngang (từ mép phải)</label>
-    <div class="slider-row">
-      <input type="range" id="marginLeft" min="0" max="0.5" step="0.01" value="0">
-      <span id="marginLeftVal"></span>
-    </div>
-
-    <label>Vị trí dọc (từ mép trên)</label>
-    <div class="slider-row">
-      <input type="range" id="marginTop" min="0" max="0.9" step="0.01" value="0">
-      <span id="marginTopVal"></span>
-    </div>
-
     <button id="downloadBtn" disabled>Tải ảnh xuống</button>
     <button class="secondary" id="resetBtn">Xoá ảnh</button>
   </div>
@@ -219,6 +301,7 @@ CTO0589-11</textarea>
 
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 const fileInput = document.getElementById('fileInput');
 const dropZone = document.getElementById('dropZone');
@@ -241,16 +324,6 @@ const lineSpacing = document.getElementById('lineSpacing');
 const lineSpacingVal = document.getElementById('lineSpacingVal');
 lineSpacing.addEventListener('input', () => { lineSpacingVal.textContent = lineSpacing.value; render(); });
 lineSpacingVal.textContent = lineSpacing.value;
-
-const marginLeftSlider = document.getElementById('marginLeft');
-const marginLeftVal = document.getElementById('marginLeftVal');
-marginLeftSlider.addEventListener('input', () => { marginLeftVal.textContent = Math.round(parseFloat(marginLeftSlider.value)*100)+'%'; render(); });
-marginLeftVal.textContent = Math.round(parseFloat(marginLeftSlider.value)*100)+'%';
-
-const marginTopSlider = document.getElementById('marginTop');
-const marginTopVal = document.getElementById('marginTopVal');
-marginTopSlider.addEventListener('input', () => { marginTopVal.textContent = Math.round(parseFloat(marginTopSlider.value)*100)+'%'; render(); });
-marginTopVal.textContent = Math.round(parseFloat(marginTopSlider.value)*100)+'%';
 
 dropZone.addEventListener('click', () => fileInput.click());
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--accent)'; });
@@ -325,12 +398,8 @@ function render(){
 
   const fontSize = canvas.width * parseFloat(fontScale.value);
   const lineHeight = fontSize * parseFloat(lineSpacing.value);
-
-  const mrRatio = parseFloat(marginLeftSlider.value);
-  const mtRatio = parseFloat(marginTopSlider.value);
-
-  const marginX = canvas.width * (1 - mrRatio) - fontSize * 0.45;
-  const marginTop = canvas.height * mtRatio + fontSize * 0.75;
+  const marginRight = fontSize * 0.45;
+  const marginTop = fontSize * 0.75;
 
   ctx.font = `400 ${fontSize}px "Helvetica Neue", Arial, sans-serif`;
   ctx.textAlign = 'right';
@@ -338,7 +407,7 @@ function render(){
   ctx.lineJoin = 'round';
 
   lines.forEach((line, i) => {
-    const x = marginX;
+    const x = canvas.width - marginRight;
     const y = marginTop + i * lineHeight;
 
     // soft drop shadow only, carries contrast without thickening the strokes
@@ -385,6 +454,148 @@ downloadBtn.addEventListener('click', () => {
     }, 300);
   }, 'image/jpeg', 0.92);
 });
+
+/* ===================== Chức năng 2: Toạ độ + bản đồ ===================== */
+
+const tabBtnManual = document.getElementById('tabBtnManual');
+const tabBtnMap = document.getElementById('tabBtnMap');
+const tabPanelMap = document.getElementById('tabPanelMap');
+const manualHint = document.getElementById('manualHint');
+
+const coordInput = document.getElementById('coordInput');
+const coordSearchBtn = document.getElementById('coordSearchBtn');
+const useMyLocationBtn = document.getElementById('useMyLocationBtn');
+const dtPicker = document.getElementById('dtPicker');
+const extraNote = document.getElementById('extraNote');
+const applyMapBtn = document.getElementById('applyMapBtn');
+const geoStatus = document.getElementById('geoStatus');
+
+let map = null;
+let marker = null;
+const DEFAULT_LATLNG = [10.0452, 105.7469]; // Cần Thơ, dùng làm điểm khởi đầu
+
+function nowLocalISO(){
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 19);
+}
+dtPicker.value = nowLocalISO();
+
+function setGeoStatus(msg, cls){
+  geoStatus.textContent = msg || '';
+  geoStatus.classList.remove('error', 'ok');
+  if (cls) geoStatus.classList.add(cls);
+}
+
+function syncCoordInputFromMarker(){
+  if (!marker) return;
+  const { lat, lng } = marker.getLatLng();
+  coordInput.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+}
+
+function ensureMap(lat, lng){
+  if (map) return;
+  map = L.map('leafletMap').setView([lat, lng], 14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+  marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+  marker.on('dragend', () => { syncCoordInputFromMarker(); setGeoStatus(''); });
+  map.on('click', e => {
+    marker.setLatLng(e.latlng);
+    syncCoordInputFromMarker();
+    setGeoStatus('');
+  });
+}
+
+function setMapLocation(lat, lng, zoom){
+  ensureMap(lat, lng);
+  map.setView([lat, lng], zoom || map.getZoom());
+  marker.setLatLng([lat, lng]);
+  syncCoordInputFromMarker();
+}
+
+function parseCoordInput(value){
+  const parts = value.split(',').map(s => parseFloat(s.trim()));
+  if (parts.length !== 2 || isNaN(parts[0]) || isNaN(parts[1])) return null;
+  return { lat: parts[0], lng: parts[1] };
+}
+
+function activateTab(tab){
+  const isMap = tab === 'map';
+  tabBtnManual.classList.toggle('active', !isMap);
+  tabBtnMap.classList.toggle('active', isMap);
+  tabPanelMap.style.display = isMap ? 'block' : 'none';
+  manualHint.style.display = isMap ? 'none' : 'block';
+  if (isMap) {
+    const [lat, lng] = DEFAULT_LATLNG;
+    ensureMap(lat, lng);
+    if (!coordInput.value) coordInput.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    setTimeout(() => map && map.invalidateSize(), 60);
+  }
+}
+tabBtnManual.addEventListener('click', () => activateTab('manual'));
+tabBtnMap.addEventListener('click', () => activateTab('map'));
+
+coordSearchBtn.addEventListener('click', () => {
+  const coords = parseCoordInput(coordInput.value);
+  if (!coords) { setGeoStatus('Toạ độ không hợp lệ. Định dạng: vĩ độ, kinh độ', 'error'); return; }
+  setMapLocation(coords.lat, coords.lng, 15);
+  setGeoStatus('');
+});
+
+useMyLocationBtn.addEventListener('click', () => {
+  if (!navigator.geolocation) { setGeoStatus('Thiết bị không hỗ trợ định vị.', 'error'); return; }
+  setGeoStatus('Đang lấy vị trí hiện tại...');
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      setMapLocation(pos.coords.latitude, pos.coords.longitude, 16);
+      setGeoStatus('Đã lấy vị trí hiện tại.', 'ok');
+    },
+    err => setGeoStatus('Không thể lấy vị trí: ' + err.message, 'error'),
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+});
+
+applyMapBtn.addEventListener('click', async () => {
+  let coords = marker ? marker.getLatLng() : null;
+  if (!coords) {
+    coords = parseCoordInput(coordInput.value);
+  }
+  if (!coords) { setGeoStatus('Vui lòng nhập toạ độ hoặc chọn điểm trên bản đồ.', 'error'); return; }
+
+  applyMapBtn.disabled = true;
+  setGeoStatus('Đang lấy địa chỉ từ bản đồ...');
+  try {
+    const lat = coords.lat, lng = coords.lng;
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=vi&zoom=14`);
+    if (!res.ok) throw new Error('Không kết nối được dịch vụ địa chỉ.');
+    const data = await res.json();
+    const addr = data.address || {};
+
+    const provinceLine = addr.city || addr.state || '';
+    const districtLine = addr.suburb || addr.county || addr.town || addr.village || addr.city_district || addr.quarter || '';
+
+    const dateLine = formatDateTime(dtPicker.value) || formatDateTime(nowLocalISO());
+    const coordLine = `${formatCoord(lat)},${formatCoord(lng)}`;
+
+    const lines = [dateLine, coordLine];
+    if (provinceLine) lines.push(provinceLine);
+    if (districtLine && districtLine !== provinceLine) lines.push(districtLine);
+    const note = extraNote.value.trim();
+    if (note) lines.push(note);
+
+    watermarkText.value = lines.join('\n');
+    render();
+    setGeoStatus('Đã điền địa chỉ lên ảnh.', 'ok');
+  } catch (err) {
+    setGeoStatus('Lỗi lấy địa chỉ: ' + err.message, 'error');
+  } finally {
+    applyMapBtn.disabled = false;
+  }
+});
+
 </script>
 </body>
 </html>
